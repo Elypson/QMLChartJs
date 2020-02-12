@@ -8,7 +8,7 @@ This Project borrow ideas from(https://github.com/jwintz/qchart.js)
 For a quick check, here is a screenshot:
 ![Screenshot](screenshot/screenshot.png)
 
-For Support features, please check(http://www.chartjs.org/)
+http://www.chartjs.org uses version 2.0.x at the moment of this writing, so it has many features (and possibly changes) that will not work with this code here.
 
 ## Usage
 ```QML
