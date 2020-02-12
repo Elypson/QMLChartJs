@@ -220,4 +220,3 @@ var StackedBarData = {
         }
     ]
 }
-

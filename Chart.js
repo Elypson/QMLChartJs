@@ -1251,6 +1251,10 @@ function newChartInstance(context, data, options, chartType) {
                 top = this.base - (this.base - this.y),
                 halfStroke = this.strokeWidth / 2;
 
+            if(this.base - top < 0.0001) {
+                return;
+            }
+
             // Canvas doesn't allow us to stroke inside the width so we can
             // adjust the sizes to fit if we're setting a stroke on the line
             if (this.showStroke) {
@@ -1497,6 +1501,7 @@ function newChartInstance(context, data, options, chartType) {
             // To do that we need the base line at the top and base of the chart, assuming there is no x label rotation
             this.startPoint = (this.display) ? this.fontSize : 0;
             this.endPoint = (this.display) ? this.height - (this.fontSize * 1.5) - 5 : this.height; // -5 to pad labels
+            this.endPoint -= this.displayXCaption ? this.fontSize * 1.5 : 0.;
 
             // Apply padding settings to the start and end point.
             this.startPoint += this.padding;
@@ -1537,6 +1542,9 @@ function newChartInstance(context, data, options, chartType) {
                 }
             }
 
+            if(this.displayYCaption) {
+                this.xScalePaddingLeft += this.fontSize * 1.5;
+            }
         },
         calculateXLabelRotation: function() {
             //Get the width of each grid by calculating the difference
@@ -1548,7 +1556,6 @@ function newChartInstance(context, data, options, chartType) {
                 lastWidth = this.ctx.measureText(this.xLabels[this.xLabels.length - 1]).width,
                 firstRotated,
                 lastRotated;
-
 
             this.xScalePaddingRight = lastWidth / 2 + 3;
             this.xScalePaddingLeft = (firstWidth / 2 > this.yLabelWidth + 10) ? firstWidth / 2 : this.yLabelWidth + 10;
@@ -1630,6 +1637,7 @@ function newChartInstance(context, data, options, chartType) {
 
                     ctx.textAlign = "right";
                     ctx.textBaseline = "middle";
+
                     if (this.showLabels) {
                         ctx.fillText(labelString, xStart - 10, yLabelCenter);
                     }
@@ -1683,10 +1691,8 @@ function newChartInstance(context, data, options, chartType) {
                     ctx.stroke();
                     ctx.closePath();
 
-
                     ctx.lineWidth = this.lineWidth;
                     ctx.strokeStyle = this.lineColor;
-
 
                     // Small lines at the bottom of the base grid line
                     ctx.beginPath();
@@ -1704,7 +1710,26 @@ function newChartInstance(context, data, options, chartType) {
                     ctx.fillText(label, 0, 0);
                     ctx.restore();
                 }, this);
+            }
 
+            //BOOKM
+            if(this.displayXCaption) {
+                ctx.save();
+                ctx.moveTo(0, 0);
+                ctx.textAlign = "center";
+                ctx.textBaseline = "bottom";
+                ctx.fillText(this.xCaption, this.width / 2, this.height);
+                ctx.restore();
+            }
+
+            if(this.displayYCaption) {
+                ctx.save();
+                ctx.translate(0, this.height / 2);
+                ctx.textAlign = "center";
+                ctx.textBaseline = "top";
+                ctx.rotate(toRadians(-90.));
+                ctx.fillText(this.yCaption, 0, 0);
+                ctx.restore();
             }
         }
 
@@ -1905,6 +1930,7 @@ function newChartInstance(context, data, options, chartType) {
                                 ctx.stroke();
                             }
                         }
+
                         if (this.showLabels) {
                             ctx.font = fontString(this.fontSize, this.fontStyle, this.fontFamily);
                             if (this.showLabelBackdrop) {
@@ -1920,7 +1946,7 @@ function newChartInstance(context, data, options, chartType) {
                             ctx.textAlign = 'center';
                             ctx.textBaseline = "middle";
                             ctx.fillStyle = this.fontColor;
-                            ctx.fillText(label, this.xCenter, yHeight);
+                            ctx.fillText("x" + label, this.xCenter, yHeight);
                         }
                     }
                 }, this);
@@ -2237,7 +2263,11 @@ function newChartInstance(context, data, options, chartType) {
                 gridLineColor: (this.options.scaleShowGridLines) ? this.options.scaleGridLineColor : "rgba(0,0,0,0)",
                 padding: (this.options.showScale) ? 0 : (this.options.barShowStroke) ? this.options.barStrokeWidth : 0,
                 showLabels: this.options.scaleShowLabels,
-                display: this.options.showScale
+                display: this.options.showScale,
+                displayXCaption: this.options.scales.xAxes.scaleLabel.display,
+                displayYCaption: this.options.scales.yAxes.scaleLabel.display,
+                xCaption: this.options.scales.xAxes.scaleLabel.labelString,
+                yCaption: this.options.scales.yAxes.scaleLabel.labelString
             };
 
             if (this.options.scaleOverride) {
@@ -2744,7 +2774,6 @@ function newChartInstance(context, data, options, chartType) {
                 });
             }
 
-
             this.scale = new Chart.Scale(scaleOptions);
         },
         addData: function(valuesArray, label) {
@@ -3005,8 +3034,7 @@ function newChartInstance(context, data, options, chartType) {
             //Set up tooltip events on the chart
             //			if (this.options.showTooltips){
             //				helpers.bindEvents(this, this.options.tooltipEvents, function(evt){
-            //					var activeSegments = (evt.type !== 'mouseout') ? this.getSegmentsAtEvent(evt) : [];
-            //					helpers.each(this.segments,function(segment){
+            //					var activeSegments = (evt.type !== 'mouseout') ? this.getSegmentsAtEvent(evt) : []; //					helpers.each(this.segments,function(segment){
             //						segment.restore(["fillColor"]);
             //					});
             //					helpers.each(activeSegments,function(activeSegment){
@@ -3563,7 +3591,10 @@ function newChartInstance(context, data, options, chartType) {
                         sum = 0;
 
                     for (var i = 0; i < datasets.length; i++) {
-                        sum += datasets[i].bars[barIndex].value;
+
+                        if(datasets[i].bars[barIndex] !== undefined) {
+                            sum += datasets[i].bars[barIndex].value;
+                        }
                     }
                     for (i = dsIndex; i < datasets.length; i++) {
                         if (i === dsIndex && value) {
@@ -3593,7 +3624,9 @@ function newChartInstance(context, data, options, chartType) {
                     var sum = 0;
 
                     for (var i = 0; i < datasets.length; i++) {
-                        sum += datasets[i].bars[barIndex].value;
+                        if(datasets[i].bars[barIndex] !== undefined) {
+                            sum += datasets[i].bars[barIndex].value;
+                        }
                     }
 
                     if (!value) {
@@ -3750,6 +3783,11 @@ function newChartInstance(context, data, options, chartType) {
                 return values;
             };
 
+            // x/y axis label options existing
+            var scalesDefined = this.options.scales !== undefined;
+            var xAxisOptionExisting = scalesDefined && this.options.scales.xAxes !== undefined && this.options.scales.xAxes.length > 0 && this.options.scales.xAxes[0].scaleLabel !== undefined;
+            var yAxisOptionExisting = scalesDefined && this.options.scales.yAxes !== undefined && this.options.scales.yAxes.length > 0 && this.options.scales.yAxes[0].scaleLabel !== undefined;
+
             var scaleOptions = {
                 templateString: this.options.scaleLabel,
                 height: this.chart.height,
@@ -3780,7 +3818,11 @@ function newChartInstance(context, data, options, chartType) {
                 gridLineColor: (this.options.scaleShowGridLines) ? this.options.scaleGridLineColor : "rgba(0,0,0,0)",
                 padding: (this.options.showScale) ? 0 : (this.options.barShowStroke) ? this.options.barStrokeWidth : 0,
                 showLabels: this.options.scaleShowLabels,
-                display: this.options.showScale
+                display: this.options.showScale,
+                displayXCaption: xAxisOptionExisting && this.options.scales.xAxes[0].scaleLabel.display,
+                displayYCaption: yAxisOptionExisting && this.options.scales.yAxes[0].scaleLabel.display,
+                xCaption: xAxisOptionExisting ? this.options.scales.xAxes[0].scaleLabel.labelString : "",
+                yCaption: yAxisOptionExisting ? this.options.scales.yAxes[0].scaleLabel.labelString : ""
             };
 
             if (this.options.scaleOverride) {
@@ -3874,18 +3916,18 @@ function newChartInstance(context, data, options, chartType) {
 
             this.scale.draw(easingDecimal);
 
-            //Draw all the bars for each dataset
+            // Draw all the bars for each dataset
             helpers.each(this.datasets, function(dataset, datasetIndex) {
                 helpers.each(dataset.bars, function(bar, index) {
                     var y = this.scale.calculateBarY(this.datasets, datasetIndex, index, bar.value),
                         height = this.scale.calculateBarHeight(this.datasets, datasetIndex, index, bar.value);
 
-                    //Transition then draw
+                    // Transition then draw
                     bar.transition({
                         base: this.scale.endPoint - (Math.abs(height) - Math.abs(y)),
                         x: this.scale.calculateBarX(index),
                         y: Math.abs(y),
-                        height: Math.abs(height),
+                        height: Math.abs(height) + 1,
                         width: this.scale.calculateBarWidth(this.datasets.length)
                     }, easingDecimal).draw();
                 }, this);
